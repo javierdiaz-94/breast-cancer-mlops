@@ -18,32 +18,32 @@ Sistema completo de MLOps que integra un modelo de Machine Learning para la pred
 
 ### Requerimientos Funcionales
 
-✅ **Modelo Predictivo**
+ **Modelo Predictivo**
 - Dataset: Breast Cancer Wisconsin (569 muestras, 30 features)
 - Algoritmo: Random Forest Classifier
 - Accuracy: 96.49%
 - Serialización: joblib (.pkl)
 
-✅ **API REST con Flask**
+ **API REST con Flask**
 - Endpoint GET /: Health check
 - Endpoint POST /predict: Predicción con validación
 - Endpoint GET /features: Lista de features requeridas
 - Manejo robusto de errores y logging
 
-✅ **Dockerización**
+ **Dockerización**
 - Dockerfile optimizado
 - Imagen base: python:3.9-slim
 - Usuario no privilegiado
 - Health checks integrados
 - Tamaño imagen: ~500MB
 
-✅ **CI/CD Automatizado**
+ **CI/CD Automatizado**
 - GitHub Actions workflow completo
 - Tests automáticos (pytest)
 - Build y publicación de imagen Docker
 - Tests de integración
 
-✅ **Documentación Completa**
+ **Documentación Completa**
 - README.md: Guía general
 - POSTMAN_GUIDE.md: Pruebas de API
 - INSTALLATION_GUIDE.md: Instalación paso a paso
@@ -185,17 +185,17 @@ Top 5 features más importantes:
 
 ### Medidas de Seguridad
 
-✅ **Validación de Entrada**
+ **Validación de Entrada**
 - Verificación de Content-Type
 - Validación de todas las features
 - Type checking de valores numéricos
 
-✅ **Docker Security**
+ **Docker Security**
 - Usuario no privilegiado (apiuser)
 - Imagen slim para reducir superficie de ataque
 - Sin credenciales hardcodeadas
 
-✅ **Error Handling**
+ **Error Handling**
 - Mensajes de error sanitizados
 - Sin exposición de internos del sistema
 - Logging controlado
@@ -300,30 +300,30 @@ curl http://localhost:5000/
 
 ### Características Destacadas
 
-✅ **Modelo Optimizado**
+ **Modelo Optimizado**
 - Cross-validation implementada
 - Feature importance analizada
 - Métricas comprehensivas
 
-✅ **API Robusta**
+ **API Robusta**
 - Validación exhaustiva
 - Logging estructurado
 - Manejo de errores completo
 - Tests automatizados
 
-✅ **Docker Eficiente**
+ **Docker Eficiente**
 - Imagen optimizada
 - Health checks
 - Usuario no root
 - Reproducibilidad garantizada
 
-✅ **CI/CD Profesional**
+ **CI/CD Profesional**
 - Tests automáticos
 - Build automatizado
 - Integration testing
 - Deploy opcional
 
-✅ **Documentación Completa**
+ **Documentación Completa**
 - README detallado
 - Guías de instalación
 - Guía de Postman
@@ -361,30 +361,21 @@ curl http://localhost:5000/
 
 ### Aspectos Técnicos
 
-✅ **Random Forest** es excelente para este tipo de problema
+ **Random Forest** es excelente para este tipo de problema
 - Alto accuracy sin mucha optimización
 - Interpretable mediante feature importance
 - Rápido en predicción
 
-✅ **Flask** es ideal para APIs de ML
+ **Flask** es ideal para APIs de ML
 - Simplicidad
 - Fácil integración con sklearn
 - Comunidad activa
 
-✅ **Docker** simplifica despliegue
+ **Docker** simplifica despliegue
 - Reproducibilidad garantizada
 - Fácil distribución
 - Portabilidad
 
-### Buenas Prácticas Aplicadas
-
-- Separación de responsabilidades (modelo vs API)
-- Validación exhaustiva de inputs
-- Logging estructurado
-- Tests automáticos
-- Documentación continua
-- Versionado con Git
-- CI/CD desde el inicio
 
 ---
 
@@ -417,26 +408,22 @@ curl http://localhost:5000/
 
 El proyecto cumple exitosamente todos los requerimientos de la evaluación modular:
 
-1. ✅ **Modelo predictivo** entrenado y serializado con métricas excelentes
-2. ✅ **API REST** funcional, documentada y probada con Postman
-3. ✅ **Dockerización** completa y optimizada
-4. ✅ **CI/CD** automatizado con GitHub Actions
-5. ✅ **Documentación** exhaustiva y profesional
+1.  **Modelo predictivo** entrenado y serializado con métricas excelentes
+2.  **API REST** funcional, documentada y probada con Postman
+3.  **Dockerización** completa y optimizada
+4.  **CI/CD** automatizado con GitHub Actions
+5.  **Documentación** exhaustiva y profesional
 
 El sistema está listo para ser utilizado en un entorno de producción real, con capacidad de escalar y evolucionar según las necesidades del negocio.
 
-### Nivel Alcanzado: **SOBRESALIENTE**
 
-El proyecto no solo cumple con los requisitos mínimos, sino que excede las expectativas en todos los criterios de evaluación, implementando buenas prácticas profesionales de MLOps y software engineering.
-
----
 
 ## 15. Contacto y Referencias
 
 ### Repositorio
 
 ```
-https://github.com/usuario/breast-cancer-mlops
+https://github.com/javierdiaz-94/breast-cancer-mlops.git
 ```
 
 ### Documentación Adicional
