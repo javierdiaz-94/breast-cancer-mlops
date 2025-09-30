@@ -34,7 +34,6 @@ jobs:
           python-version: '3.9'
 
       # Paso 3: Configura la caché para las dependencias de pip.
-      # Esto acelera las futuras ejecuciones al reutilizar las dependencias descargadas.
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
@@ -49,7 +48,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Paso 5: Ejecuta el script de entrenamiento del modelo.
+      # Paso 5: Ejecuta el script de entrenamiento del modelo (necesario para las pruebas de API).
       - name: Train model
         run: |
           python models/train_model.py
@@ -64,9 +63,9 @@ jobs:
         uses: codecov/codecov-action@v3
         if: always() # Se ejecuta siempre, incluso si los pasos anteriores fallan.
 
-  # Segundo trabajo: "build". Su propósito es construir la imagen de Docker.
+  # Segundo trabajo: "build". Su propósito es construir la imagen de Docker y subirla.
   build:
-    name: Build Docker Image
+    name: Build & Push Docker Image
     runs-on: ubuntu-latest
     # Este trabajo depende de que el trabajo "test" se complete con éxito.
     needs: test
@@ -75,56 +74,53 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
+      # --- Pre-requisitos para el Build ---
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
+      # Entrenar el modelo (Se necesita el modelo serializado para el COPY en el Dockerfile)
       - name: Train model for Docker
         run: |
           python models/train_model.py
-
-      # Paso 5: Configura Docker Buildx, una herramienta para construir imágenes avanzadas.
+      
+      # Configura Docker Buildx
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
+      
+      # Inicia sesión en Docker Hub (solo si es un push a main)
+      - name: Log in to Docker Hub
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Paso 6: Construye la imagen de Docker y la etiqueta con el SHA del commit y como "latest".
-      - name: Build Docker image
-        run: |
-          docker build -t breast-cancer-api:${{ github.sha }} .
-          docker tag breast-cancer-api:${{ github.sha }} breast-cancer-api:latest
+      # --- Build, Tag y Push (Paso modificado) ---
 
-      # Paso 7: Realiza una prueba rápida para verificar que la imagen de Docker funciona.
-      - name: Test Docker image
+      - name: Build and push Docker image
+        id: docker_build
+        uses: docker/build-push-action@v5
+        if: github.ref == 'refs/heads/main' # Solo sube si es la rama main
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/breast-cancer-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/breast-cancer-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- Prueba Rápida de la Imagen (Local Build/Test) ---
+      
+      # Si NO es 'main' (por ejemplo, 'develop' o 'pull_request'), simplemente construye localmente y prueba.
+      - name: Build and Test Docker image (No push)
+        if: github.ref != 'refs/heads/main'
         run: |
+          docker build -t breast-cancer-api:latest .
           docker run -d -p 5000:5000 --name test-api breast-cancer-api:latest
           sleep 10
           curl -f http://localhost:5000/ || exit 1
           docker stop test-api
           docker rm test-api
-
-      # Paso 8: Inicia sesión en Docker Hub. Se ejecuta solo en pushes a la rama "main".
-      - name: Log in to Docker Hub (optional)
-        if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      # Paso 9: Sube la imagen a Docker Hub. Se ejecuta solo en pushes a la rama "main".
-      - name: Push to Docker Hub (optional)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          docker tag breast-cancer-api:latest ${{ secrets.DOCKER_USERNAME }}/breast-cancer-api:latest
-          docker tag breast-cancer-api:latest ${{ secrets.DOCKER_USERNAME }}/breast-cancer-api:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/breast-cancer-api:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/breast-cancer-api:${{ github.sha }}
-
+          
   # Tercer trabajo: "integration-test". Ejecuta pruebas de integración contra el contenedor Docker.
   integration-test:
     name: Integration Tests
@@ -135,21 +131,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Ya que el job 'build' puede haber subido la imagen (si es main),
+      # este job solo necesita construirla localmente para la prueba de integración
+      # o hacer un pull si ya está en un registro (para un despliegue real).
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
+      - name: Install dependencies (para ejecutar el script de test)
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Entrenar el modelo (Necesario si el modelo no está en la imagen base)
       - name: Train model
         run: |
           python models/train_model.py
 
-      - name: Build Docker image
+      - name: Build Docker image for integration test
         run: |
           docker build -t breast-cancer-api:test .
 
@@ -159,45 +160,10 @@ jobs:
           docker run -d -p 5000:5000 --name integration-test breast-cancer-api:test
           sleep 15
 
-      # Paso 7: Ejecuta un script de Python en línea para probar los endpoints de la API.
-      - name: Run integration tests
+      # Paso 7: Ejecuta las pruebas de integración.
+      - name: Run integration tests (API endpoints)
         run: |
-          python -c "
-          import requests
-          import json
-
-          # Prueba el endpoint de estado del servicio
-          print('Testing health check endpoint...')
-          response = requests.get('http://localhost:5000/')
-          assert response.status_code == 200, 'Health check failed'
-          print('Health check: OK')
-
-          # Prueba el endpoint de predicción
-          print('Testing prediction endpoint...')
-          payload = {
-              'mean_radius': 17.99, 'mean_texture': 10.38, 'mean_perimeter': 122.8,
-              'mean_area': 1001.0, 'mean_smoothness': 0.1184, 'mean_compactness': 0.2776,
-              'mean_concavity': 0.3001, 'mean_concave_points': 0.1471, 'mean_symmetry': 0.2419,
-              'mean_fractal_dimension': 0.07871, 'radius_error': 1.095, 'texture_error': 0.9053,
-              'perimeter_error': 8.589, 'area_error': 153.4, 'smoothness_error': 0.006399,
-              'compactness_error': 0.04904, 'concavity_error': 0.05373, 'concave_points_error': 0.01587,
-              'symmetry_error': 0.03003, 'fractal_dimension_error': 0.006193, 'worst_radius': 25.38,
-              'worst_texture': 17.33, 'worst_perimeter': 184.6, 'worst_area': 2019.0,
-              'worst_smoothness': 0.1622, 'worst_compactness': 0.6656, 'worst_concavity': 0.7119,
-              'worst_concave_points': 0.2654, 'worst_symmetry': 0.4601, 'worst_fractal_dimension': 0.1189
-          }
-          response = requests.post(
-              'http://localhost:5000/predict',
-              json=payload,
-              headers={'Content-Type': 'application/json'}
-          )
-          assert response.status_code == 200, f'Prediction failed with status {response.status_code}'
-          result = response.json()
-          assert 'prediction' in result, 'Missing prediction in response'
-          assert 'confidence' in result, 'Missing confidence in response'
-          print('Prediction test: OK')
-          print(f'Result: {result}')
-          "
+          python tests/test_endpoints.py # Asumiendo que has movido el script de prueba a tests/test_endpoints.py
 
       # Paso 8: Detiene y elimina el contenedor de prueba para limpiar el entorno.
       - name: Stop and remove container
